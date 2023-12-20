@@ -26,7 +26,6 @@ def check_bound(obj,map_lst:list,mv):
         return obj.x,obj.y
 
 
-
 class Player():
     def __init__(self):
         self.x = 3
@@ -34,14 +33,65 @@ class Player():
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
+        
     
     def update(self,mv,screen: pg.Surface,map_lst):
         self.x,self.y = check_bound(self,map_lst,mv)
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
         screen.blit(self.img,self.rect.center)
 
+class Bomb(pg.sprite.Sprite):
+    """
+    プレイヤーの足元に爆弾を置き、爆発のエフェクトを発生させる機能
+
+    """
+    def __init__(self,player):
+        super().__init__()
+        self.x = player.x
+        self.y = player.y
+        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/bomb.png"), 0, 0.05)
+        self.rect = self.img.get_rect()
+        self.rect.center = (self.x * SQ_SIDE, self.y * SQ_SIDE)
+        self.timer = 0
+        self.explosions = []
+        self.power = 0
+
+    def update(self, screen: pg.Surface):
+        self.timer += 1
+        if self.timer >= 180:
+            self.kill()  # 持続時間が経過したら爆発エフェクトを消去する
+        screen.blit(self.img, self.rect.center)
+
+        
+    def explode(self, screen: pg.Surface):
+        if self.timer >= 180:
+            explosions = []
+            for direction in [(1, 0), (-1, 0), (0, 1), (0, -1)]:  # 四方向に爆発エフェクトを生成
+                explosions.append(Explosion(self.x + direction[0], self.y + direction[1], self))
+            return explosions
+        return []
 
 
+class Explosion(pg.sprite.Sprite):
+    """
+    爆弾の四方に爆発が起こるようにする。
+    """
+    def __init__(self, x, y, obj):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/explosion.gif"),0 ,0.5)
+        self.rect = self.img.get_rect()
+        self.rect.center = (self.x * SQ_SIDE, self.y * SQ_SIDE)
+        self.timer = 0
+        self.duration = 60
+                
+    def update(self, screen: pg.Surface):
+        self.timer += 1
+        if self.timer >= self.duration: 
+            self.kill()
+            self.timer = 0
+        screen.blit(self.img, self.rect.center)
 
 
 def main():
@@ -51,6 +101,9 @@ def main():
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     wall_image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/wall.png"),0, 2.5)
     map_lst = [[0 for i in range(17)] for j in range(26)]
+    bombs = pg.sprite.Group()  # 爆弾インスタンスのリスト
+    explosions = pg.sprite.Group()  # 爆発インスタンスのリスト
+    
     while True:
         screen.blit(bg_img, [0, 0])
         # 壁設置 
@@ -79,8 +132,22 @@ def main():
                     mv[0] += 1
                 if event.key == pg.K_LEFT:
                     mv[0] -= 1
+                if event.key== pg.K_LSHIFT:  # 左シフトキーが押されたかチェック
+                    new_bomb = Bomb(player)
+                    bombs.add(new_bomb)
             
         player.update(mv, screen,map_lst)
+        
+        for bomb in bombs:  # 爆弾をイテレート
+            bomb.update(screen)
+            if bomb.timer >= 180:
+                explosion = bomb.explode(screen)
+                if explosion:
+                    explosions.add(explosion)
+                    
+        for explosion in explosions:  # 爆発をイテレート
+            explosion.update(screen)
+            
         pg.display.update()
         pass
     # score = Score()

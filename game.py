@@ -3,6 +3,7 @@ import os
 import random
 import sys
 import time
+from typing import Any
 import pygame as pg
 
 WIDTH = 1000  # ゲームウィンドウの幅 25
@@ -14,6 +15,7 @@ MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 TYPE_DICT = {0:"floor",1:"wall",2:"block",3:"bomb",4:"explosion"}
 P_1 = (3,14)
 P_2 = (22,3)
+
 
 
 def check_bound(obj,map_lst:list,mv):
@@ -36,43 +38,56 @@ def judgement(bomb, map_lst:list):
     返値:内容を変更したmap_lst
     """
     exps = []
+    newitem = []
+    bound = random.random()
     for i in range(1, bomb.power + 1):  # 上側の判定
         if map_lst[bomb.x][bomb.y - i] == 1:  # 壁と接触していたら,その時点で終了
             break
         elif map_lst[bomb.x][bomb.y - i] == 2:  # blockと接触したら
             map_lst[bomb.x][bomb.y - i] = 0    #blockを消す
+            if bound > 0.5:
+                newitem.append(Items(bomb.x,bomb.y-i))
             exps.append(Explosion(bomb.x,bomb.y-i))
             break
         exps.append(Explosion(bomb.x,bomb.y-i))
 
+    bound = random.random()
     for i in range( 1, bomb.power + 1):  # 下側の判定
         if map_lst[bomb.x][bomb.y + i] == 1:
             break
         elif map_lst[bomb.x][bomb.y + i] == 2:
             map_lst[bomb.x][bomb.y + i] = 0
+            if bound > 0.5:
+                newitem.append(Items(bomb.x,bomb.y+i))
             exps.append(Explosion(bomb.x,bomb.y+i))
             break
         exps.append(Explosion(bomb.x,bomb.y+i))
 
+    bound = random.random()
     for i in range( 1, bomb.power + 1):  # 右側の判定
         if map_lst[bomb.x + i][bomb.y] == 1:
             break
         elif map_lst[bomb.x + i][bomb.y] == 2:
             map_lst[bomb.x + i][bomb.y] = 0
+            if bound > 0.5:
+                newitem.append(Items(bomb.x+i,bomb.y))
             exps.append(Explosion(bomb.x+i,bomb.y))
             break
         exps.append(Explosion(bomb.x+i,bomb.y))
 
+    bound = random.random()
     for i in range( 1, bomb.power + 1):  # 左側の判定
         if map_lst[bomb.x - i][bomb.y] == 1:
             break
         elif map_lst[bomb.x - i][bomb.y] == 2:
             map_lst[bomb.x - i][bomb.y] = 0
+            if bound > 0.5:
+                newitem.append(Items(bomb.x-i,bomb.y))
             exps.append(Explosion(bomb.x-i,bomb.y))
             break
         exps.append(Explosion(bomb.x-i,bomb.y))
     exps.append(Explosion(bomb.x,bomb.y))
-    return map_lst,exps
+    return map_lst,exps,newitem
     
     
 class Player():
@@ -81,6 +96,9 @@ class Player():
         self.x = pos[0]
         self.y = pos[1]
         self.name = name
+        self.bomb_cnt = 0
+        self.bomb_max = 3
+        self.bomb_power = 1
         self.hyper_life = 0  # 発動時間
         self.hyper_count = 1 # 発動回数
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
@@ -123,13 +141,35 @@ class Player():
         screen.blit(self.img,self.rect.center)
 
 
+class Items(pg.sprite.Sprite):
+    item_types = ("power_up","hyper","max_bomb")
+    def __init__(self,x,y):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.type = random.choice(__class__.item_types)
+        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{self.type}.png"), 0, 0.8)
+    
+    def get_item(self,player:Player):
+        if self.type == "power_up":
+            player.bomb_power += 1
+        elif self.type == "hyper":
+            player.hyper_life = 300
+        elif self.type == "max_bomb":
+            player.bomb_max += 1
+        self.kill()
+    
+    def update(self,screen:pg.Surface):
+        screen.blit(self.img,(self.x * SQ_SIDE, self.y * SQ_SIDE))
+
 class Bomb(pg.sprite.Sprite):
     """
     プレイヤーの足元に爆弾を置き、爆発のエフェクトを発生させる機能
 
     """
-    def __init__(self,player):
+    def __init__(self,player:Player):
         super().__init__()
+        self.parent = player
         self.x = player.x
         self.y = player.y
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/bomb.png"), 0, 0.05)
@@ -137,7 +177,7 @@ class Bomb(pg.sprite.Sprite):
         self.rect.center = (self.x * SQ_SIDE, self.y * SQ_SIDE)
         self.timer = 0
         self.explosions = []
-        self.power = 2
+        self.power = player.bomb_power
 
     def update(self, screen: pg.Surface,map_lst:list):
         self.timer += 1
@@ -145,6 +185,7 @@ class Bomb(pg.sprite.Sprite):
         if self.timer >= 180:
             self.kill()  # 持続時間が経過したら爆発エフェクトを消去する
             map_lst[self.x][self.y] = 0
+            self.parent.bomb_cnt -= 1
         screen.blit(self.img, self.rect.center)
 
         
@@ -181,6 +222,7 @@ class Explosion(pg.sprite.Sprite):
 def main():
     pg.display.set_caption("吹き飛べ！！こうかとん！！！")
     players = [Player(P_1,"p1"),Player(P_2,"p2")]
+    items = []
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     wall_image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/wall.png"),0, 2.5)
@@ -239,8 +281,9 @@ def main():
                             mv1[0] += 1
                         if event.key == pg.K_a:
                             mv1[0] -= 1
-                        if event.key== pg.K_LSHIFT:  # 左シフトキーが押されたかチェック
+                        if event.key== pg.K_LSHIFT and player.bomb_cnt < player.bomb_max:  # 左シフトキーが押されたかチェック
                             new_bomb = Bomb(player)
+                            player.bomb_cnt += 1
                             bombs.add(new_bomb)
                         if event.key == pg.K_e and player.hyper_count > 0:
                             player.hyper_life = 100
@@ -256,8 +299,9 @@ def main():
                             mv2[0] += 1
                         if event.key == pg.K_LEFT:
                             mv2[0] -= 1
-                        if event.key== pg.K_RSHIFT:  # 左シフトキーが押されたかチェック
+                        if event.key== pg.K_RSHIFT and player.bomb_cnt < player.bomb_max:  # シフトキーが押されたかチェック
                             new_bomb = Bomb(player)
+                            player.bomb_cnt += 1
                             bombs.add(new_bomb)
                         if event.key == pg.K_i and player.hyper_count > 0:
                             player.hyper_life = 10000
@@ -274,12 +318,15 @@ def main():
         for bomb in bombs:  # 爆弾をイテレート
             bomb.update(screen,map_lst)
             if bomb.timer >= 180:
-                map_lst,explosion = bomb.explode(screen,map_lst)
+                map_lst,explosion,new_item = bomb.explode(screen,map_lst)
+                items.extend(new_item)
                 if explosion:
                     explosions.add(explosion)
                     
         for explosion in explosions:  # 爆発をイテレート
             explosion.update(screen,map_lst)
+        for item in items:
+            item.update(screen)
         pg.display.update()
 
 

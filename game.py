@@ -24,7 +24,52 @@ def check_bound(obj,map_lst:list,mv):
         return obj.x+mv[0],obj.y+mv[1]
     else:
         return obj.x,obj.y
+    
 
+# class Bomb():
+#     def __init__(self):
+#         self.x = 3
+#         self.y = 11
+#         self.power = 2
+
+    
+
+
+def judgement(bomb, map_lst:list):
+    """
+    bomb:爆弾
+    map_lst:
+
+    引数:接触判定したいbombクラス
+    返値:内容を変更したmap_lst
+    """
+    for i in range(1, bomb.power + 1):  # 上側の判定
+        if map_lst[bomb.x][bomb.y - i] == 1:  # 壁と接触していたら,その時点で終了
+            break
+        elif map_lst[bomb.x][bomb.y - i] == 2:  # blockと接触したら
+            print("yobidasareta")
+            map_lst[bomb.x][bomb.y - i] = 0    #blockを消す
+
+    for i in range( 1, bomb.power + 1):  # 下側の判定
+        if map_lst[bomb.x][bomb.y + i] == 1:
+            break
+        elif map_lst[bomb.x][bomb.y + i] == 2:
+            map_lst[bomb.x][bomb.y + i] = 0
+
+    for i in range( 1, bomb.power + 1):  # 右側の判定
+        if map_lst[bomb.x + i][bomb.y] == 1:
+            break
+        elif map_lst[bomb.x + i][bomb.y] == 2:
+            map_lst[bomb.x + i][bomb.y] = 0
+
+    for i in range( 1, bomb.power + 1):  # 左側の判定
+        if map_lst[bomb.x - i][bomb.y] == 1:
+            break
+        elif map_lst[bomb.x - i][bomb.y] == 2:
+            map_lst[bomb.x - i][bomb.y] = 0
+    
+    return map_lst
+    
 
 class Player():
 
@@ -117,7 +162,6 @@ def main():
                     mv[0] += 1
                 if event.key == pg.K_LEFT:
                     mv[0] -= 1
-
                 if event.key == pg.K_i and Player.hyper_count > 0:
                     Player.hyper_life = 100
                     if Player.hyper_life > 0:
@@ -129,17 +173,7 @@ def main():
         pg.display.update()
         #print(Player.hyper_life)
         pass
-    # score = Score()
-    # bird = Bird(3, (900, 400))
-    # bombs = pg.sprite.Group()
-    # beams = pg.sprite.Group()
-    # shield = pg.sprite.Group()
-    # exps = pg.sprite.Group()
-    # emys = pg.sprite.Group()
-    # gravitys = pg.sprite.Group()
-    # num = 3
-    # tmr = 0
-    # clock = pg.time.Clock()
+
 
 
 if __name__ == "__main__":

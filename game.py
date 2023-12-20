@@ -74,13 +74,14 @@ def judgement(bomb, map_lst:list):
     
     
 class Player():
-
+  
     hyper_life = 0  # 発動時間
     hyper_count = 1 # 発動回数
 
-    def __init__(self):
-        self.x = 3
-        self.y = 11
+    def __init__(self,x,y,name):
+        self.x = x
+        self.y = y
+        self.name = name
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
@@ -175,7 +176,8 @@ class Explosion(pg.sprite.Sprite):
 
 def main():
     pg.display.set_caption("吹き飛べ！！こうかとん！！！")
-    player = Player()
+    player = Player(3,11,"p1")
+    player2 = Player(20,3,"p2")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     wall_image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/wall.png"),0, 2.5)
@@ -221,14 +223,24 @@ def main():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP:
-                    mv[1] -= 1
-                if event.key == pg.K_DOWN:
-                    mv[1] += 1
-                if event.key == pg.K_RIGHT:
-                    mv[0] += 1
-                if event.key == pg.K_LEFT:
-                    mv[0] -= 1
+                if player.name == "p1":
+                    if event.key == pg.K_w:
+                        mv[1] -= 1
+                    if event.key == pg.K_s:
+                        mv[1] += 1
+                    if event.key == pg.K_d:
+                        mv[0] += 1
+                    if event.key == pg.K_a:
+                        mv[0] -= 1
+                if player.name == "p2":
+                    if event.key == pg.K_UP:
+                        mv[1] -= 1
+                    if event.key == pg.K_DOWN:
+                        mv[1] += 1
+                    if event.key == pg.K_RIGHT:
+                        mv[0] += 1
+                    if event.key == pg.K_LEFT:
+                        mv[0] -= 1
                 if event.key== pg.K_LSHIFT:  # 左シフトキーが押されたかチェック
                     new_bomb = Bomb(player)
                     bombs.add(new_bomb)
@@ -241,7 +253,6 @@ def main():
         player.invi_time()
         player.update(mv, screen,map_lst)
         
-
         for bomb in bombs:  # 爆弾をイテレート
             bomb.update(screen,map_lst)
             if bomb.timer >= 180:
@@ -251,11 +262,7 @@ def main():
                     
         for explosion in explosions:  # 爆発をイテレート
             explosion.update(screen,map_lst)
-            
         pg.display.update()
-        #print(Player.hyper_life)
-        pass
-
 
 
 if __name__ == "__main__":

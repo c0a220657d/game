@@ -12,6 +12,8 @@ TATE = 17  # マス数
 YOKO = 25
 MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 TYPE_DICT = {0:"floor",1:"wall",2:"block",3:"bomb",4:"explosion"}
+P_1 = (3,14)
+P_2 = (22,3)
 
 
 def check_bound(obj,map_lst:list,mv):
@@ -20,7 +22,7 @@ def check_bound(obj,map_lst:list,mv):
     map_lst:マップ
     mv:動く距離
     """
-    if map_lst[obj.x+mv[0]][obj.y+mv[1]] == 0:
+    if map_lst[obj.x+mv[0]][obj.y+mv[1]] in [0,4]:
         return obj.x+mv[0],obj.y+mv[1]
     else:
         return obj.x,obj.y
@@ -75,13 +77,12 @@ def judgement(bomb, map_lst:list):
     
 class Player():
   
-    hyper_life = 0  # 発動時間
-    hyper_count = 1 # 発動回数
-
-    def __init__(self,x,y,name):
-        self.x = x
-        self.y = y
+    def __init__(self,pos,name):
+        self.x = pos[0]
+        self.y = pos[1]
         self.name = name
+        self.hyper_life = 0  # 発動時間
+        self.hyper_count = 1 # 発動回数
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
@@ -91,7 +92,7 @@ class Player():
         """
         コウカトンを無敵状態にする
         """
-        if state == "hyper" and Player.hyper_life > 0:
+        if state == "hyper" and self.hyper_life > 0:
             self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
             self.img = pg.transform.laplacian(self.img)
             screen.blit(self.img, self.rect)
@@ -105,17 +106,20 @@ class Player():
         """
         hyper_lifeを管理する関数
         """
-        if Player.hyper_life > 0 and Player.hyper_life != 0:
-            Player.hyper_life -= 1
+        if self.hyper_life > 0 and self.hyper_life != 0:
+            self.hyper_life -= 1
 
-        if Player.hyper_life <= 0:
+        if self.hyper_life <= 0:
             self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
     
     def update(self,mv,screen: pg.Surface,map_lst):
         self.x,self.y = check_bound(self,map_lst,mv)
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
-        if map_lst[self.x][self.y] == 4:
-            self.x,self.y = (3,11)
+        if map_lst[self.x][self.y] == 4 and self.hyper_life <= 0:
+            if self.name == "p1":
+                self.x,self.y = P_1
+            elif self.name == "p2":
+                self.x,self.y = P_2
         screen.blit(self.img,self.rect.center)
 
 
@@ -176,8 +180,7 @@ class Explosion(pg.sprite.Sprite):
 
 def main():
     pg.display.set_caption("吹き飛べ！！こうかとん！！！")
-    player = Player(3,11,"p1")
-    player2 = Player(20,3,"p2")
+    players = [Player(P_1,"p1"),Player(P_2,"p2")]
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     wall_image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/wall.png"),0, 2.5)
@@ -189,8 +192,10 @@ def main():
         for y in range(TATE):
             num = random.randint(0,2)
             if num != 0:
-                if not((player.x-1 <= x <= player.x+1)and(player.y-1 <= y <= player.y+1)): #  プレイヤーの周りに配置しない
-                    map_lst[x][y] = 2
+                if not((players[0].x-1 <= x <= players[0].x+1)and(players[0].y-1 <= y <= players[0].y+1)): #  プレイヤーの周りに配置しない
+                    if not((players[1].x-1 <= x <= players[1].x+1)and(players[1].y-1 <= y <= players[1].y+1)):
+                        map_lst[x][y] = 2
+                    
     
     # 壁設置 
     for x in range(YOKO):
@@ -218,40 +223,53 @@ def main():
                 if map_lst[x][y] == 2:
                     screen.blit(dwall_image,(x*SQ_SIDE,y*SQ_SIDE))
         key_lst = pg.key.get_pressed()
-        mv = [0,0]
+        mv1 = [0,0]
+        mv2 = [0,0]
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN:
-                if player.name == "p1":
-                    if event.key == pg.K_w:
-                        mv[1] -= 1
-                    if event.key == pg.K_s:
-                        mv[1] += 1
-                    if event.key == pg.K_d:
-                        mv[0] += 1
-                    if event.key == pg.K_a:
-                        mv[0] -= 1
-                if player.name == "p2":
-                    if event.key == pg.K_UP:
-                        mv[1] -= 1
-                    if event.key == pg.K_DOWN:
-                        mv[1] += 1
-                    if event.key == pg.K_RIGHT:
-                        mv[0] += 1
-                    if event.key == pg.K_LEFT:
-                        mv[0] -= 1
-                if event.key== pg.K_LSHIFT:  # 左シフトキーが押されたかチェック
-                    new_bomb = Bomb(player)
-                    bombs.add(new_bomb)
-                if event.key == pg.K_i and Player.hyper_count > 0:
-                    Player.hyper_life = 100
-                    if Player.hyper_life > 0:
-                        player.invincible("hyper", screen)
-                        Player.hyper_count -= 1
+                for player in players:
+                    if player.name == "p1":
+                        if event.key == pg.K_w:
+                            mv1[1] -= 1
+                        if event.key == pg.K_s:
+                            mv1[1] += 1
+                        if event.key == pg.K_d:
+                            mv1[0] += 1
+                        if event.key == pg.K_a:
+                            mv1[0] -= 1
+                        if event.key== pg.K_LSHIFT:  # 左シフトキーが押されたかチェック
+                            new_bomb = Bomb(player)
+                            bombs.add(new_bomb)
+                        if event.key == pg.K_e and player.hyper_count > 0:
+                            player.hyper_life = 100
+                            if player.hyper_life > 0:
+                                player.invincible("hyper", screen)
+                            player.hyper_count -= 1
+                    if player.name == "p2":
+                        if event.key == pg.K_UP:
+                            mv2[1] -= 1
+                        if event.key == pg.K_DOWN:
+                            mv2[1] += 1
+                        if event.key == pg.K_RIGHT:
+                            mv2[0] += 1
+                        if event.key == pg.K_LEFT:
+                            mv2[0] -= 1
+                        if event.key== pg.K_RSHIFT:  # 左シフトキーが押されたかチェック
+                            new_bomb = Bomb(player)
+                            bombs.add(new_bomb)
+                        if event.key == pg.K_i and player.hyper_count > 0:
+                            player.hyper_life = 10000
+                            if player.hyper_life > 0:
+                                player.invincible("hyper", screen)
+                            player.hyper_count -= 1
+                    
         
-        player.invi_time()
-        player.update(mv, screen,map_lst)
+        players[0].invi_time()
+        players[0].update(mv1, screen,map_lst)
+        players[1].invi_time()
+        players[1].update(mv2, screen,map_lst)
         
         for bomb in bombs:  # 爆弾をイテレート
             bomb.update(screen,map_lst)

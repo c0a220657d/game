@@ -11,7 +11,7 @@ SQ_SIDE = 40  # マス一辺
 TATE = 17  # マス数
 YOKO = 25
 MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
-TYPE_DICT = {0:"floor",1:"wall",2:"block",3:"bomb"}
+TYPE_DICT = {0:"floor",1:"wall",2:"block",3:"bomb",4:"explosion"}
 
 
 def check_bound(obj,map_lst:list,mv):
@@ -25,16 +25,6 @@ def check_bound(obj,map_lst:list,mv):
     else:
         return obj.x,obj.y
     
-
-# class Bomb():
-#     def __init__(self):
-#         self.x = 3
-#         self.y = 11
-#         self.power = 2
-
-    
-
-
 def judgement(bomb, map_lst:list):
     """
     bomb:爆弾
@@ -43,32 +33,44 @@ def judgement(bomb, map_lst:list):
     引数:接触判定したいbombクラス
     返値:内容を変更したmap_lst
     """
+    exps = []
     for i in range(1, bomb.power + 1):  # 上側の判定
         if map_lst[bomb.x][bomb.y - i] == 1:  # 壁と接触していたら,その時点で終了
             break
         elif map_lst[bomb.x][bomb.y - i] == 2:  # blockと接触したら
-            print("yobidasareta")
             map_lst[bomb.x][bomb.y - i] = 0    #blockを消す
+            exps.append(Explosion(bomb.x,bomb.y-i))
+            break
+        exps.append(Explosion(bomb.x,bomb.y-i))
 
     for i in range( 1, bomb.power + 1):  # 下側の判定
         if map_lst[bomb.x][bomb.y + i] == 1:
             break
         elif map_lst[bomb.x][bomb.y + i] == 2:
             map_lst[bomb.x][bomb.y + i] = 0
+            exps.append(Explosion(bomb.x,bomb.y+i))
+            break
+        exps.append(Explosion(bomb.x,bomb.y+i))
 
     for i in range( 1, bomb.power + 1):  # 右側の判定
         if map_lst[bomb.x + i][bomb.y] == 1:
             break
         elif map_lst[bomb.x + i][bomb.y] == 2:
             map_lst[bomb.x + i][bomb.y] = 0
+            exps.append(Explosion(bomb.x+i,bomb.y))
+            break
+        exps.append(Explosion(bomb.x+i,bomb.y))
 
     for i in range( 1, bomb.power + 1):  # 左側の判定
         if map_lst[bomb.x - i][bomb.y] == 1:
             break
         elif map_lst[bomb.x - i][bomb.y] == 2:
             map_lst[bomb.x - i][bomb.y] = 0
-    
-    return map_lst
+            exps.append(Explosion(bomb.x-i,bomb.y))
+            break
+        exps.append(Explosion(bomb.x-i,bomb.y))
+    exps.append(Explosion(bomb.x,bomb.y))
+    return map_lst,exps
     
     
 class Player():
@@ -111,6 +113,8 @@ class Player():
     def update(self,mv,screen: pg.Surface,map_lst):
         self.x,self.y = check_bound(self,map_lst,mv)
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
+        if map_lst[self.x][self.y] == 4:
+            self.x,self.y = (3,11)
         screen.blit(self.img,self.rect.center)
 
 
@@ -128,29 +132,28 @@ class Bomb(pg.sprite.Sprite):
         self.rect.center = (self.x * SQ_SIDE, self.y * SQ_SIDE)
         self.timer = 0
         self.explosions = []
-        self.power = 0
+        self.power = 2
 
-    def update(self, screen: pg.Surface):
+    def update(self, screen: pg.Surface,map_lst:list):
         self.timer += 1
+        map_lst[self.x][self.y] = 3
         if self.timer >= 180:
             self.kill()  # 持続時間が経過したら爆発エフェクトを消去する
+            map_lst[self.x][self.y] = 0
         screen.blit(self.img, self.rect.center)
 
         
-    def explode(self, screen: pg.Surface):
-        if self.timer >= 180:
-            explosions = []
-            for direction in [(1, 0), (-1, 0), (0, 1), (0, -1)]:  # 四方向に爆発エフェクトを生成
-                explosions.append(Explosion(self.x + direction[0], self.y + direction[1], self))
-            return explosions
-        return []
+    def explode(self, screen: pg.Surface,map_lst:list):
+        if self.timer >= 180: 
+            return judgement(self,map_lst)
+        return map_lst,[]
       
 
 class Explosion(pg.sprite.Sprite):
     """
     爆弾の四方に爆発が起こるようにする。
     """
-    def __init__(self, x, y, obj):
+    def __init__(self, x, y):
         super().__init__()
         self.x = x
         self.y = y
@@ -160,11 +163,13 @@ class Explosion(pg.sprite.Sprite):
         self.timer = 0
         self.duration = 60
                 
-    def update(self, screen: pg.Surface):
+    def update(self, screen: pg.Surface,map_lst:list):
         self.timer += 1
+        map_lst[self.x][self.y] = 4
         if self.timer >= self.duration: 
             self.kill()
             self.timer = 0
+            map_lst[self.x][self.y] = 0
         screen.blit(self.img, self.rect.center)
 
 
@@ -184,25 +189,32 @@ def main():
             if num != 0:
                 if not((player.x-1 <= x <= player.x+1)and(player.y-1 <= y <= player.y+1)): #  プレイヤーの周りに配置しない
                     map_lst[x][y] = 2
+    
+    # 壁設置 
+    for x in range(YOKO):
+        for y in range(TATE):
+            if x == 0 or x == YOKO-1:
+                map_lst[x][y] = 1
+            elif y == 0 or y == TATE-1:
+                map_lst[x][y] = 1
+            elif x%2 == 0 and y%2 == 0:
+                map_lst[x][y] = 1
+            if map_lst[x][y] == 1:
+                screen.blit(wall_image,(x*SQ_SIDE,y*SQ_SIDE))
+            # 壊れる壁配置
+            if map_lst[x][y] == 2:
+                screen.blit(dwall_image,(x*SQ_SIDE,y*SQ_SIDE))
                 
     while True:
         screen.blit(bg_img, [0, 0])
-        # 壁設置 
+        # 壁描画
         for x in range(YOKO):
             for y in range(TATE):
-                if x == 0 or x == YOKO-1:
-                    map_lst[x][y] = 1
-                elif y == 0 or y == TATE-1:
-                    map_lst[x][y] = 1
-                elif x%2 == 0 and y%2 == 0:
-                    map_lst[x][y] = 1
                 if map_lst[x][y] == 1:
                     screen.blit(wall_image,(x*SQ_SIDE,y*SQ_SIDE))
                 # 壊れる壁配置
                 if map_lst[x][y] == 2:
                     screen.blit(dwall_image,(x*SQ_SIDE,y*SQ_SIDE))
-                    
-    
         key_lst = pg.key.get_pressed()
         mv = [0,0]
         for event in pg.event.get():
@@ -229,15 +241,16 @@ def main():
         player.invi_time()
         player.update(mv, screen,map_lst)
         
+
         for bomb in bombs:  # 爆弾をイテレート
-            bomb.update(screen)
+            bomb.update(screen,map_lst)
             if bomb.timer >= 180:
-                explosion = bomb.explode(screen)
+                map_lst,explosion = bomb.explode(screen,map_lst)
                 if explosion:
                     explosions.add(explosion)
                     
         for explosion in explosions:  # 爆発をイテレート
-            explosion.update(screen)
+            explosion.update(screen,map_lst)
             
         pg.display.update()
         #print(Player.hyper_life)

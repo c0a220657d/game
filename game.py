@@ -26,8 +26,11 @@ def check_bound(obj,map_lst:list,mv):
         return obj.x,obj.y
 
 
-
 class Player():
+
+    hyper_life = 0  # 発動時間
+    hyper_count = 1 # 発動回数
+
     def __init__(self):
         self.x = 3
         self.y = 11
@@ -35,13 +38,36 @@ class Player():
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
     
+    def invincible(self, state: str, screen: pg.Surface):
+        """
+        コウカトンを無敵状態にする
+        """
+        if state == "hyper" and Player.hyper_life > 0:
+            self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
+            self.img = pg.transform.laplacian(self.img)
+            screen.blit(self.img, self.rect)
+
+
+        # if state == "normal":
+        #     self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
+        #     screen.blit(self.img, self.rect)
+            
+    def invi_time(self):
+        """
+        hyper_lifeを管理する関数
+        """
+        if Player.hyper_life > 0 and Player.hyper_life != 0:
+            Player.hyper_life -= 1
+
+        if Player.hyper_life <= 0:
+            self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
+    
     def update(self,mv,screen: pg.Surface,map_lst):
         self.x,self.y = check_bound(self,map_lst,mv)
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
         screen.blit(self.img,self.rect.center)
 
-
-
+    
 
 
 def main():
@@ -79,9 +105,17 @@ def main():
                     mv[0] += 1
                 if event.key == pg.K_LEFT:
                     mv[0] -= 1
-            
+
+                if event.key == pg.K_i and Player.hyper_count > 0:
+                    Player.hyper_life = 100
+                    if Player.hyper_life > 0:
+                        player.invincible("hyper", screen)
+                        Player.hyper_count -= 1
+        
+        player.invi_time()
         player.update(mv, screen,map_lst)
         pg.display.update()
+        #print(Player.hyper_life)
         pass
     # score = Score()
     # bird = Bird(3, (900, 400))

@@ -28,9 +28,9 @@ def check_bound(obj,map_lst:list,mv):
 
 
 class Player():
-    def __init__(self):
-        self.x = 3
-        self.y = 11
+    def __init__(self,x,y):
+        self.x = x
+        self.y = y
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
@@ -46,7 +46,8 @@ class Player():
 
 def main():
     pg.display.set_caption("吹き飛べ！！こうかとん！！！")
-    player = Player()
+    player1 = Player(3,11)
+    player2 = Player(20,3)
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     wall_image = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/wall.png"),0, 2.5)
@@ -66,23 +67,32 @@ def main():
                     screen.blit(wall_image,(x*SQ_SIDE,y*SQ_SIDE))
     
         key_lst = pg.key.get_pressed()
-        mv = [0,0]
+        mv1 = [0,0]
+        mv2 = [0,0]
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
             if event.type == pg.KEYDOWN:
+                if event.key == pg.K_w:
+                    mv1[1] -= 1
+                if event.key == pg.K_s:
+                    mv1[1] += 1
+                if event.key == pg.K_d:
+                    mv1[0] += 1
+                if event.key == pg.K_a:
+                    mv1[0] -= 1
                 if event.key == pg.K_UP:
-                    mv[1] -= 1
+                    mv2[1] -= 1
                 if event.key == pg.K_DOWN:
-                    mv[1] += 1
+                    mv2[1] += 1
                 if event.key == pg.K_RIGHT:
-                    mv[0] += 1
+                    mv2[0] += 1
                 if event.key == pg.K_LEFT:
-                    mv[0] -= 1
+                    mv2[0] -= 1
             
-        player.update(mv, screen,map_lst)
+        player1.update(mv1, screen,map_lst)
+        player2.update(mv2, screen,map_lst)
         pg.display.update()
-        pass
     # score = Score()
     # bird = Bird(3, (900, 400))
     # bombs = pg.sprite.Group()

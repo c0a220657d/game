@@ -96,7 +96,7 @@ class Player(pg.sprite.Sprite):
     プレイヤーの情報を管理するクラス
     pos:初期位置 name:プレイヤー名(仮)
     """
-    def __init__(self,pos:tuple(int,int),name:str):
+    def __init__(self,pos:tuple,name:str):
         super().__init__()
         self.x = pos[0]
         self.y = pos[1]
@@ -106,6 +106,8 @@ class Player(pg.sprite.Sprite):
         self.bomb_power = 1  # 爆風の長さ
         self.hyper_life = 0  # 発動時間 
         self.hyper_count = 1 # 発動回数 
+        self.font = pg.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+        self.info = self.font.render(f"MAX:{self.bomb_max},POW:{self.bomb_power}", 0, "blue")
         self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/player.png"), 0, 2.5)
         self.rect = self.img.get_rect()
         self.rect.center = (self.x*SQ_SIDE,self.y*SQ_SIDE)
@@ -141,6 +143,11 @@ class Player(pg.sprite.Sprite):
             elif self.name == "p2":
                 self.x,self.y = P_2
         screen.blit(self.img,self.rect.center)
+        self.info = self.font.render(f"MAX:{self.bomb_max},POW:{self.bomb_power}", 0, "blue")
+        if self.name == "p1":
+                screen.blit(self.info,(60,0))
+        elif self.name == "p2":
+                screen.blit(self.info,(800,640))
 
 
 class Item(pg.sprite.Sprite):
@@ -346,7 +353,6 @@ def main():
         for item in items:
             item.update(screen)
         pg.display.update()
-
 
 
 if __name__ == "__main__":
